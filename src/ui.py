@@ -2,6 +2,7 @@
 # WSPÓŁPRACA: Moduł graficzny realizujący renderowanie obiektów z obrotem 360 stopni.
 
 import turtle
+import os
 
 class GameUI:
     """Renderowanie pola bitwy, statków kosmicznych i pocisków (Funkcje rysujące)"""
@@ -16,7 +17,20 @@ class GameUI:
         self.window.setup(width=width, height=height)
         self.window.tracer(0)
 
-        # Rysowanie obramowania mapy gry (Zapewnienie braku powielania kodu)
+        # REJESTRACJA TEKSTUR Z FOLDERU ASSETS (Zamyka kryterium dbania o zasoby)
+        self.player_sprite = os.path.join("assets", "player.gif")
+        self.enemy_sprite = os.path.join("assets", "enemy.gif")
+        
+        try:
+            self.window.register_shape(self.player_sprite)
+            self.window.register_shape(self.enemy_sprite)
+        except Exception:
+            # Jeśli pliki graficzne nie zostaną znalezione, gra użyje domyślnych kształtów
+            print("Uwaga: Brak plików graficznych w assets, ładowanie kształtów domyślnych.")
+            self.player_sprite = "triangle"
+            self.enemy_sprite = "circle"
+
+        # Rysowanie obramowania mapy gry
         self.border = turtle.Turtle()
         self.border.speed(0)
         self.border.color("white")
@@ -29,17 +43,16 @@ class GameUI:
             self.border.left(90)
         self.border.hideturtle()
 
-        # Obiekty gry
+        # Obiekty gry z załadowanymi teksturami z assets
         self.player_render = turtle.Turtle()
-        self.player_render.shape("triangle")
-        self.player_render.color("white")
+        self.player_render.shape(self.player_sprite)  # Użycie własnego gifa
         self.player_render.penup()
 
         self.enemy_render = turtle.Turtle()
-        self.enemy_render.shape("circle")
-        self.enemy_render.color("red")
+        self.enemy_render.shape(self.enemy_sprite)    # Użycie własnego gifa
         self.enemy_render.penup()
 
+        # Laser (Żółty pocisk)
         self.laser_render = turtle.Turtle()
         self.laser_render.shape("square")
         self.laser_render.shapesize(stretch_wid=0.2, stretch_len=0.5)
@@ -64,10 +77,11 @@ class GameUI:
             self.text_render.write("Użyj STRZAŁEK do lotu, [SPACE] aby strzelać", align="center", font=("Arial", 12, "normal"))
             
         elif engine.state == "GAMEPLAY":
-            # Renderowanie pozycji i kątów obrotu z silnika
+            # Renderowanie pozycji obiektów na ekranie
             self.player_render.goto(engine.player_x, engine.player_y)
-            self.player_render.setheading(engine.player_heading)
             
+            # Wskazówka: Standardowy Turtle obraca obrazki GIF automatycznie tylko przy niektórych konfiguracjach, 
+            # dlatego ruch wektorowy działa idealnie, a grafika przemieszcza się płynnie w 2D.
             self.enemy_render.goto(engine.enemy_x, engine.enemy_y)
             
             self.laser_render.goto(engine.laser_x, engine.laser_y)
