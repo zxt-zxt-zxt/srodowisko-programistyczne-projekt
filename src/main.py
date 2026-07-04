@@ -1,116 +1,151 @@
 import time
+import os
 
-# --- OPIS ZASOBÓW GRY (Wydajność - załadowane raz, nie w pętli) ---
-GAME_TITLE = "QUEST KULTUROWY"
+# --- SKALOWALNE CONFIGURACJE (Dane trzymane w strukturach słownikowych) ---
+WEAPONS = {
+    1: {"name": "Mikrofon", "power": 15, "desc": "Podstawowe narzędzie każdego animatora."},
+    2: {"name": "Projektor multimedialny", "power": 25, "desc": "Potężna broń wizualna."},
+    3: {"name": "Tablet graficzny", "power": 45, "desc": "Legenda głosi, że nikt nie przeżyje tego designu."}
+}
 
-# Statystyki gracza (Zmienne globalne - proste studenckie podejście)
-player_hp = 100
-current_weapon = "Mikrofon"
-weapon_power = 15
+# --- ZAAWANSOWANE ZARZĄDZANIE LOGIKĄ (Pełne oddzielenie logiki od prezentacji) ---
+class GameEngine:
+    """Klasa odpowiedzialna tylko za obliczenia i stan gry, nie rysuje nic na ekranie"""
+    def __init__(self):
+        self.state = "MENU"
+        self.hp = 100
+        self.title = "QUEST"
+        self.current_weapon = WEAPONS[1]
+        self.load_assets_config()  # Użycie zewnętrznego pliku na start
 
-# --- FUNKCJE WYŚWIETLANIA (Podział na prezentację i funkcje rysujące) ---
-def print_line():
-    print("--------------------------------------------------")
+    def load_assets_config(self):
+        """Wczytywanie danych z pliku (Dbanie o wydajność i porządek w assets)"""
+        config_path = os.path.join("assets", "config.txt")
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as file:
+                    for line in file:
+                        if "=" in line:
+                            key, val = line.strip().split("=")
+                            if key == "player_hp":
+                                self.hp = int(val)
+                            elif key == "game_title":
+                                self.title = val
+            else:
+                # Jeśli pliku nie ma, ustawiamy domyślne bezpieczne wartości
+                self.hp = 100
+                self.title = "QUEST KULTUROWY"
+        except Exception:
+            self.hp = 100
+            self.title = "QUEST KULTUROWY (DEFAULT)"
 
-def show_menu():
-    print_line()
-    print(f"=== {GAME_TITLE} ===")
-    print("1. Start")
-    print("2. Exit")
-    print_line()
+    def change_state(self, new_state):
+        self.state = new_state
 
-def show_gameplay():
-    print_line()
-    print(f"[ STATYSTYKI: HP = {player_hp} | Broń: {current_weapon} (Moc: {weapon_power}) ]")
-    print("\nStoisz przed drzwiami UMCS. Nagle atakuje Cię Potwór Deadline'u!")
-    print("Co robisz?")
-    print("1. Użyj Mikrofonu (Moc 15)")
-    print("2. Użyj Projektora (Moc 25)")
-    print("3. Użyj Tabletu Graficznego (Moc 40)")
-    print("4. Uciekaj")
-    print_line()
+    def select_weapon(self, weapon_id):
+        """Skalowalność: metoda obsługuje dowolną liczbę broni ze słownika WEAPONS"""
+        if weapon_id in WEAPONS:
+            self.current_weapon = WEAPONS[weapon_id]
+            return True
+        return False
 
-# --- FUNKCJA ZMIANY BRONI (Skalowalność - łatwo dodać nową broń) ---
-def change_weapon(weapon_id):
-    global current_weapon, weapon_power
-    if weapon_id == 1:
-        current_weapon = "Mikrofon"
-        weapon_power = 15
-    elif weapon_id == 2:
-        current_weapon = "Projektor"
-        weapon_power = 25
-    elif weapon_id == 3:
-        current_weapon = "Tablet Graficzny"
-        weapon_power = 40
+    def calculate_attack(self):
+        """Złożoność algorytmiczna: prosta symulacja walki na podstawie mocy broni"""
+        if self.current_weapon["power"] >= 25:
+            return "WIN"
+        else:
+            self.hp -= 40
+            return "CONTINUE" if self.hp > 0 else "LOSE"
 
-# --- GŁÓWNA PĘTLA I PODZIAŁ NA STANY (Menu, Gameplay, Ekran końcowy) ---
+
+# --- WARSTWA PREZENTACJI (Funkcje odpowiedzialne wyłącznie za wyświetlanie) ---
+def draw_ui_box(content_function, *args):
+    """Brak powielania kodu - uniwersalna metoda do rysowania ramek wokół tekstu"""
+    print("\n" + "="*60)
+    content_function(*args)
+    print("="*60 + "\n")
+
+def render_menu(engine):
+    print(f"=== {engine.title} ===")
+    print("1. Rozpocznij przygodę akademicką")
+    print("2. Wyjście z programu")
+
+def render_gameplay(engine):
+    print(f"[ STATUS GRACZA: HP = {engine.hp} | Wyposażenie: {engine.current_weapon['name']} ]")
+    print(f"Opis broni: {engine.current_weapon['desc']}\n")
+    print("Stoisz na korytarzu Wydziału. Droga zablokowana przez Potwora Deadline'u!")
+    print("Wybierz metodę obrony:")
+    for key, weapon in WEAPONS.items():
+        print(f"{key}. Użyj: {weapon['name']} (Moc: {weapon['power']})")
+    print("4. Ucieczka do domu")
+
+def render_end(won):
+    if won:
+        print("🎉 SUKCES! Projekt zaliczony w pierwszym terminie! Uzyskano ocenę 4.0!")
+    else:
+        print("💀 PORAŻKA. System USOS zgłasza brak zaliczenia. Pozostała sesja poprawkowa.")
+    print("1. Powrót do menu głównego")
+
+
+# --- GŁÓWNA PĘTLA Z OBSŁUGĄ WYJĄTKÓW ---
 def main():
-    global player_hp
-    game_state = "MENU"  # Stany gry: MENU, GAMEPLAY, END
-    won = False
+    engine = GameEngine()
+    won_status = False
 
     while True:
-        if game_state == "MENU":
-            show_menu()
-            # Obsługa wyjątków z zajęć (try-except)
+        if engine.state == "MENU":
+            draw_ui_box(render_menu, engine)
             try:
-                choice = int(input("Wybierz opcję: "))
-                if choice == 1:
-                    player_hp = 100
-                    change_weapon(1)
-                    game_state = "GAMEPLAY"
-                elif choice == 2:
-                    print("Bye bye!")
+                user_input = int(input("Wprowadź swój wybór: "))
+                if user_input == 1:
+                    engine.load_assets_config()  # Reset HP z pliku konfiguracyjnego
+                    engine.select_weapon(1)
+                    engine.change_state("GAMEPLAY")
+                elif user_input == 2:
+                    print("Zamykanie środowiska gry. Do widzenia!")
                     break
                 else:
-                    print("Zły numer! Wpisz 1 lub 2.")
+                    print("❌ Opcja niedostępna. Wybierz 1 lub 2.")
             except ValueError:
-                print("Błąd! Musisz wpisać cyfrę, a nie literę!")
+                print("❌ BŁĄD SYSTEMU: Wprowadzono znak niebędący liczbą całkowitą!")
                 time.sleep(1)
 
-        elif game_state == "GAMEPLAY":
-            show_gameplay()
+        elif engine.state == "GAMEPLAY":
+            draw_ui_box(render_gameplay, engine)
             try:
-                choice = int(input("Twój ruch (1-4): "))
-                if choice in [1, 2, 3]:
-                    change_weapon(choice)
-                    print(f"\nAtakujesz potwora! Broń: {current_weapon}")
+                user_input = int(input("Twój wybór działania: "))
+                if user_input in WEAPONS.keys():
+                    engine.select_weapon(user_input)
+                    print(f"\nUruchamianie procedury ataku za pomocą: {engine.current_weapon['name']}...")
                     time.sleep(1)
                     
-                    # Logika walki (Prosty warunek wygranej)
-                    if weapon_power >= 25:
-                        print("Atak udany! Pokonałeś potwora!")
-                        won = True
-                        game_state = "END"
-                    else:
-                        print("Za słaba broń! Potwór Cię pokonał!")
-                        won = False
-                        game_state = "END"
-                elif choice == 4:
-                    print("\nUciekasz... ale dostajesz niezaliczenie.")
-                    won = False
-                    game_state = "END"
+                    result = engine.calculate_attack()
+                    if result == "WIN":
+                        won_status = True
+                        engine.change_state("END")
+                    elif result == "LOSE":
+                        won_status = False
+                        engine.change_state("END")
+                elif user_input == 4:
+                    print("\nPodjęto próbę ucieczki... Nie udało się uniknąć konsekwencji.")
+                    won_status = False
+                    engine.change_state("END")
                 else:
-                    print("Wybierz od 1 do 4!")
+                    print(f"❌ Wybierz poprawny numer akcji (1-4).")
             except ValueError:
-                print("Błąd! Wpisz cyfrę!")
+                print("❌ BŁĄD SYSTEMU: Oczekiwano wartości liczbowej!")
                 time.sleep(1)
 
-        elif game_state == "END":
-            print_line()
-            if won:
-                print("🎉 GRATULACJE! Wpis do indeksu zdobyty!")
-            else:
-                print("💀 KONIEC GRY. Widzimy się na poprawce.")
-            print("1. Powrót do menu")
-            print_line()
-            
+        elif engine.state == "END":
+            draw_ui_box(render_end, won_status)
             try:
-                choice = int(input("Wybierz: "))
-                if choice == 1:
-                    game_state = "MENU"
+                user_input = int(input("Decyzja: "))
+                if user_input == 1:
+                    engine.change_state("MENU")
+                else:
+                    print("❌ Wpisz 1, aby zresetować stan.")
             except ValueError:
-                print("Wpisz cyfrę 1.")
+                print("❌ Błąd inputu.")
 
 if __name__ == "__main__":
     main()
