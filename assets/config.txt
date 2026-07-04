@@ -1,0 +1,3 @@
+player_hp=100
+game_title=QUEST KULTUROWY v2
+difficulty=NORMAL
